@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spidey Download Statistics</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="bg"></div>
+<header class="hero">
+  <h1>📊 Spidey Download Statistics</h1>
+  <p>Live SourceForge download analytics</p>
+</header>
+
+<section class="cards">
+  <div class="card"><h3>Total Downloads</h3><div id="total" class="value">...</div></div>
+  <div class="card"><h3>Top Month</h3><div id="topMonth" class="value">...</div></div>
+  <div class="card"><h3>Average / Month</h3><div id="avg" class="value">...</div></div>
+</section>
+
+<section class="chart-card">
+<canvas id="downloadsChart"></canvas>
+</section>
+
+<footer>
+Powered by SourceForge API
+</footer>
+
+<script>
+const api="https://sourceforge.net/projects/spidey/files/stats/json?start_date=2026-01-01&end_date=2026-08-01&period=monthly";
+
+async function load(){
+ try{
+   const r=await fetch(api);
+   const d=await r.json();
+
+   const rows=(d.downloads||d.stats||d.data||[]);
+   let labels=[],values=[];
+
+   if(Array.isArray(rows)){
+      rows.forEach(x=>{
+         labels.push(x.label||x.date||x.month||Object.keys(x)[0]);
+         values.push(Number(x.downloads??x.total??x.value??Object.values(x)[1]??0));
+      });
+   }
+
+   const total=values.reduce((a,b)=>a+b,0);
+   document.getElementById("total").textContent=total.toLocaleString();
+
+   if(values.length){
+      const max=Math.max(...values);
+      const idx=values.indexOf(max);
+      document.getElementById("topMonth").textContent=labels[idx]+" ("+max.toLocaleString()+")";
+      document.getElementById("avg").textContent=Math.round(total/values.length).toLocaleString();
+   }
+
+   new Chart(document.getElementById("downloadsChart"),{
+      type:"bar",
+      data:{
+        labels:labels,
+        datasets:[{
+          label:"Downloads",
+          data:values,
+          borderRadius:10
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{beginAtZero:true}
+        }
+      }
+   });
+ }catch(e){
+   document.querySelector(".chart-card").innerHTML="<div class='error'>Unable to load SourceForge statistics.<br>Check whether the API allows CORS.</div>";
+ }
+}
+load();
+</script>
+</body>
+</html>
