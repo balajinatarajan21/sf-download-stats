@@ -5,79 +5,132 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spidey Download Statistics</title>
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<div class="bg"></div>
-<header class="hero">
-  <h1>📊 Spidey Download Statistics</h1>
-  <p>Live SourceForge download analytics</p>
-</header>
-
-<section class="cards">
-  <div class="card"><h3>Total Downloads</h3><div id="total" class="value">...</div></div>
-  <div class="card"><h3>Top Month</h3><div id="topMonth" class="value">...</div></div>
-  <div class="card"><h3>Average / Month</h3><div id="avg" class="value">...</div></div>
-</section>
-
-<section class="chart-card">
-<canvas id="downloadsChart"></canvas>
-</section>
-
-<footer>
-Powered by SourceForge API
-</footer>
-
 <script>
-const api="https://sourceforge.net/projects/spidey/files/stats/json?start_date=2026-01-01&end_date=2026-08-01&period=monthly";
+const startDate = "2026-05-01";
+const endDate = new Date().toISOString().split("T")[0];
 
-async function load(){
- try{
-   const r=await fetch(api);
-   const d=await r.json();
+const api = `https://sourceforge.net/projects/spidey/files/stats/json?start_date=${startDate}&end_date=${endDate}&period=monthly`;
 
-   const rows=(d.downloads||d.stats||d.data||[]);
-   let labels=[],values=[];
+async function load() {
+    try {
+        const response = await fetch(api);
+        const d = await response.json();
 
-   if(Array.isArray(rows)){
-      rows.forEach(x=>{
-         labels.push(x.label||x.date||x.month||Object.keys(x)[0]);
-         values.push(Number(x.downloads??x.total??x.value??Object.values(x)[1]??0));
-      });
-   }
+        // -------------------------
+        // Monthly Downloads
+        // -------------------------
+        const labels = [];
+        const values = [];
 
-   const total=values.reduce((a,b)=>a+b,0);
-   document.getElementById("total").textContent=total.toLocaleString();
+        d.downloads.forEach(([date, downloads]) => {
+            labels.push(
+                new Date(date).toLocaleString("en-US", {
+                    month: "short",
+                    year: "numeric"
+                })
+            );
+            values.push(downloads);
+        });
 
-   if(values.length){
-      const max=Math.max(...values);
-      const idx=values.indexOf(max);
-      document.getElementById("topMonth").textContent=labels[idx]+" ("+max.toLocaleString()+")";
-      document.getElementById("avg").textContent=Math.round(total/values.length).toLocaleString();
-   }
+        // -------------------------
+        // Summary Cards
+        // -------------------------
+        document.getElementById("total").textContent =
+            d.total.toLocaleString();
 
-   new Chart(document.getElementById("downloadsChart"),{
-      type:"bar",
-      data:{
-        labels:labels,
-        datasets:[{
-          label:"Downloads",
-          data:values,
-          borderRadius:10
-        }]
-      },
-      options:{
-        responsive:true,
-        plugins:{legend:{display:false}},
-        scales:{
-          y:{beginAtZero:true}
+        const max = Math.max(...values);
+        const maxIndex = values.indexOf(max);
+
+        document.getElementById("topMonth").textContent =
+            `${labels[maxIndex]} (${max.toLocaleString()})`;
+
+        document.getElementById("avg").textContent =
+            Math.round(d.total / values.length).toLocaleString();
+
+        // -------------------------
+        // Partial Month Notice
+        // -------------------------
+        if (d.last_period_incomplete) {
+            const badge = document.createElement("div");
+            badge.style.textAlign = "center";
+            badge.style.marginBottom = "15px";
+            badge.style.color = "#ffd54f";
+            badge.style.fontWeight = "600";
+            badge.textContent =
+                `⚠ ${labels[labels.length - 1]} is a partial month`;
+            document.querySelector(".chart-card").prepend(badge);
         }
-      }
-   });
- }catch(e){
-   document.querySelector(".chart-card").innerHTML="<div class='error'>Unable to load SourceForge statistics.<br>Check whether the API allows CORS.</div>";
- }
+
+        // -------------------------
+        // Chart
+        // -------------------------
+        new Chart(
+            document.getElementById("downloadsChart"),
+            {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Downloads",
+                        data: values,
+                        backgroundColor: "rgba(74,144,226,0.85)",
+                        borderColor: "#6bb7ff",
+                        borderWidth: 2,
+                        borderRadius: 12,
+                        hoverBackgroundColor: "#79c0ff"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx =>
+                                    ctx.raw.toLocaleString() + " downloads"
+                            }
+                        }
+                    },
+
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: "#ffffff"
+                            },
+                            grid: {
+                                color: "rgba(255,255,255,0.08)"
+                            }
+                        },
+
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: "#ffffff"
+                            },
+                            grid: {
+                                color: "rgba(255,255,255,0.08)"
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+    } catch (err) {
+        console.error(err);
+
+        document.querySelector(".chart-card").innerHTML = `
+            <div class="error">
+                Unable to load SourceForge statistics.<br><br>
+                This is usually caused by the API blocking CORS requests.
+            </div>`;
+    }
 }
+
 load();
 </script>
 </body>
