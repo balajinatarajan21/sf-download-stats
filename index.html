@@ -3,38 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Spidey Download Statistics</title>
+
 <link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="bg"></div>
+
+<header class="hero">
+    <h1>📊 Spidey Download Statistics</h1>
+    <p>Live SourceForge Download Analytics</p>
+</header>
+
+<section class="cards">
+
+    <div class="card">
+        <h3>Total Downloads</h3>
+        <div id="total" class="value">...</div>
+    </div>
+
+    <div class="card">
+        <h3>Top Month</h3>
+        <div id="topMonth" class="value">...</div>
+    </div>
+
+    <div class="card">
+        <h3>Average / Month</h3>
+        <div id="avg" class="value">...</div>
+    </div>
+
+</section>
+
+<section class="chart-card">
+    <canvas id="downloadsChart"></canvas>
+</section>
+
+<footer>
+    Powered by SourceForge API
+</footer>
+
 <script>
+
 const startDate = "2026-05-01";
 const endDate = new Date().toISOString().split("T")[0];
 
-const api = `https://sourceforge.net/projects/spidey/files/stats/json?start_date=${startDate}&end_date=${endDate}&period=monthly`;
+const api =
+`https://sourceforge.net/projects/spidey/files/stats/json?start_date=${startDate}&end_date=${endDate}&period=monthly`;
 
 async function load() {
+
     try {
+
         const response = await fetch(api);
         const d = await response.json();
 
-        // -------------------------
-        // Monthly Downloads
-        // -------------------------
         const labels = [];
         const values = [];
 
         d.downloads.forEach(([date, downloads]) => {
+
             labels.push(
                 new Date(date).toLocaleString("en-US", {
                     month: "short",
                     year: "numeric"
                 })
             );
+
             values.push(downloads);
+
         });
 
-        // -------------------------
-        // Summary Cards
-        // -------------------------
         document.getElementById("total").textContent =
             d.total.toLocaleString();
 
@@ -47,91 +90,130 @@ async function load() {
         document.getElementById("avg").textContent =
             Math.round(d.total / values.length).toLocaleString();
 
-        // -------------------------
-        // Partial Month Notice
-        // -------------------------
         if (d.last_period_incomplete) {
+
             const badge = document.createElement("div");
+
             badge.style.textAlign = "center";
             badge.style.marginBottom = "15px";
-            badge.style.color = "#ffd54f";
-            badge.style.fontWeight = "600";
-            badge.textContent =
-                `⚠ ${labels[labels.length - 1]} is a partial month`;
+            badge.style.color = "#FFD54F";
+            badge.style.fontWeight = "bold";
+
+            badge.innerHTML =
+                `⚠ ${labels[labels.length-1]} is still in progress`;
+
             document.querySelector(".chart-card").prepend(badge);
+
         }
 
-        // -------------------------
-        // Chart
-        // -------------------------
-        new Chart(
-            document.getElementById("downloadsChart"),
-            {
-                type: "bar",
-                data: {
-                    labels,
-                    datasets: [{
-                        label: "Downloads",
-                        data: values,
-                        backgroundColor: "rgba(74,144,226,0.85)",
-                        borderColor: "#6bb7ff",
-                        borderWidth: 2,
-                        borderRadius: 12,
-                        hoverBackgroundColor: "#79c0ff"
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+        new Chart(document.getElementById("downloadsChart"), {
 
-                    plugins: {
-                        legend: {
-                            display: false
+            type: "bar",
+
+            data: {
+
+                labels,
+
+                datasets: [{
+
+                    label: "Downloads",
+
+                    data: values,
+
+                    backgroundColor: [
+                        "#4F46E5",
+                        "#2563EB",
+                        "#0891B2",
+                        "#10B981"
+                    ],
+
+                    borderRadius: 10
+
+                }]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+
+                        display: false
+
+                    }
+
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+
+                            color: "white"
+
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx =>
-                                    ctx.raw.toLocaleString() + " downloads"
-                            }
+
+                        grid: {
+
+                            color: "rgba(255,255,255,.08)"
+
                         }
+
                     },
 
-                    scales: {
-                        x: {
-                            ticks: {
-                                color: "#ffffff"
-                            },
-                            grid: {
-                                color: "rgba(255,255,255,0.08)"
-                            }
+                    y: {
+
+                        beginAtZero: true,
+
+                        ticks: {
+
+                            color: "white"
+
                         },
 
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: "#ffffff"
-                            },
-                            grid: {
-                                color: "rgba(255,255,255,0.08)"
-                            }
-                        }
-                    }
-                }
-            }
-        );
+                        grid: {
 
-    } catch (err) {
+                            color: "rgba(255,255,255,.08)"
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        });
+
+    }
+
+    catch (err) {
+
         console.error(err);
 
-        document.querySelector(".chart-card").innerHTML = `
-            <div class="error">
-                Unable to load SourceForge statistics.<br><br>
-                This is usually caused by the API blocking CORS requests.
-            </div>`;
+        document.querySelector(".chart-card").innerHTML =
+
+        `<div class="error">
+
+            Failed to load SourceForge statistics.<br><br>
+
+            ${err}
+
+        </div>`;
+
     }
+
 }
 
 load();
+
 </script>
+
 </body>
 </html>
